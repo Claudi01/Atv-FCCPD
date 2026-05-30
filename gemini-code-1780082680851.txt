@@ -1,0 +1,20 @@
+ecommerce-distribuido/
+├── api-gateway/
+│   ├── index.js
+│   └── package.json
+├── users-service/
+│   ├── index.js
+│   ├── users.json
+│   └── package.json
+├── products-service/
+│   ├── index.js
+│   ├── products_replica1.json
+│   ├── products_replica2.json
+│   └── package.json
+├── orders-service/
+│   ├── index.js
+│   ├── orders.json
+│   └── package.json
+├── docker-compose.yml
+├── README_execucao.md
+└── relatorio.pdf
