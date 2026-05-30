@@ -1,1 +1,26 @@
-[]
+[
+  {
+    "id": "1780149245568",
+    "userId": "1780112563617",
+    "product": {
+      "id": "1780148183080",
+      "name": "Cadeira Gamer",
+      "price": 850
+    },
+    "quantity": 2,
+    "totalPrice": 1700,
+    "status": "Aprovado"
+  },
+  {
+    "id": "1780149313707",
+    "userId": "1780112563617",
+    "product": {
+      "id": "1780148183080",
+      "name": "Cadeira Gamer",
+      "price": 850
+    },
+    "quantity": 2,
+    "totalPrice": 1700,
+    "status": "Aprovado"
+  }
+]
