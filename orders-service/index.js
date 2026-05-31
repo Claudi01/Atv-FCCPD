@@ -57,8 +57,7 @@ app.post('/orders', verifyToken, async (req, res) => {
     }
 
     try {
-        // --- COMUNICAÇÃO ENTRE MICROSSERVIÇOS ---
-        // O Serviço de Pedidos (5003) consulta o Serviço de Produtos (5002)
+
         const productResponse = await axios.get(`http://localhost:5002/products/${productId}`);
         const product = productResponse.data;
 
