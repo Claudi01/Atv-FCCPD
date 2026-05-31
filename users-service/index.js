@@ -10,40 +10,43 @@ const PORT = 5001;
 const SECRET_KEY = 'minha_chave_secreta_super_segura'; 
 const USERS_FILE = './users.json';
 
-// Função auxiliar para ler usuários do JSON
 function getUsers() {
-    const data = fs.readFileSync(USERS_FILE, 'utf8');
-    return JSON.parse(data);
+    try {
+        const data = fs.readFileSync(USERS_FILE, 'utf8');
+        return JSON.parse(data);
+    } catch (err) {
+        return [];
+    }
 }
 
-// Função auxiliar para salvar usuários no JSON
 function saveUsers(users) {
     fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2));
 }
 
-// 1. Health Check (Requisito obrigatório para o Gateway)
 app.get('/health', (req, res) => {
     res.json({ status: "ok" });
 });
 
-// 2. Registro de Usuário
 app.post('/users/register', async (req, res) => {
     const { name, email, password, role } = req.body;
-    const users = getUsers();
+    
+    if (!name || !email || !password) {
+        return res.status(400).json({ error: 'Nome, email e senha são obrigatórios.' });
+    }
 
+    const users = getUsers();
     if (users.find(u => u.email === email)) {
         return res.status(400).json({ error: 'Email já cadastrado.' });
     }
 
-    // Hash da senha (segurança)
     const hashedPassword = await bcrypt.hash(password, 10);
-    
+
     const newUser = {
         id: Date.now().toString(),
         name,
         email,
         password: hashedPassword,
-        role: role || 'user' // 'user' ou 'admin'
+        role: role || 'user'
     };
 
     users.push(newUser);
@@ -52,57 +55,60 @@ app.post('/users/register', async (req, res) => {
     res.status(201).json({ message: 'Usuário criado com sucesso!', id: newUser.id });
 });
 
-// 3. Login e geração de JWT
 app.post('/users/login', async (req, res) => {
     const { email, password } = req.body;
     const users = getUsers();
-    const user = users.find(u => u.email === email);
 
+    const user = users.find(u => u.email === email);
     if (!user) {
         return res.status(404).json({ error: 'Usuário não encontrado.' });
     }
 
-    const isPasswordValid = await bcrypt.compare(password, user.password);
-    if (!isPasswordValid) {
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
         return res.status(401).json({ error: 'Senha incorreta.' });
     }
 
-    // Gerando o Token com os dados do usuário
     const token = jwt.sign(
         { userId: user.id, email: user.email, role: user.role },
         SECRET_KEY,
         { expiresIn: '1h' }
     );
 
-    res.json({ token });
+    res.json({ message: 'Login bem-sucedido', token });
 });
 
-// 4. Retornar dados do usuário (Requer JWT)
-app.get('/users/:id', (req, res) => {
+function verifyToken(req, res, next) {
     const authHeader = req.headers.authorization;
     if (!authHeader) return res.status(401).json({ error: 'Token não fornecido.' });
 
     const token = authHeader.split(' ')[1];
-    
     try {
         const decoded = jwt.verify(token, SECRET_KEY);
-        // Regra: só pode ver se for o dono do ID ou um admin
-        if (decoded.userId !== req.params.id && decoded.role !== 'admin') {
-            return res.status(403).json({ error: 'Acesso negado.' });
-        }
-
-        const users = getUsers();
-        const user = users.find(u => u.id === req.params.id);
-        
-        if (!user) return res.status(404).json({ error: 'Usuário não encontrado' });
-
-        // Removemos a senha antes de devolver os dados
-        const { password, ...userData } = user;
-        res.json(userData);
-        
+        req.user = decoded; 
+        next();
     } catch (err) {
         res.status(401).json({ error: 'Token inválido ou expirado.' });
     }
+}
+
+app.get('/users/:id', verifyToken, (req, res) => {
+    const requestedId = req.params.id;
+    const loggedId = req.user.userId;
+
+    if (requestedId !== loggedId && req.user.role !== 'admin') {
+        return res.status(403).json({ error: 'Acesso negado.' });
+    }
+
+    const users = getUsers();
+    const user = users.find(u => u.id === requestedId);
+
+    if (!user) {
+        return res.status(404).json({ error: 'Usuário não encontrado.' });
+    }
+
+    const { password, ...userWithoutPassword } = user;
+    res.json(userWithoutPassword);
 });
 
 app.listen(PORT, () => {
